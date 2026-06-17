@@ -1,0 +1,6 @@
+certifi
+joblib
+numpy
+pypdf
+scikit-learn
+streamlit
