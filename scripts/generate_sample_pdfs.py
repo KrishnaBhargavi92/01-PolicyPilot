@@ -3,7 +3,7 @@ from textwrap import wrap
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DOCS_DIR = ROOT_DIR / "backend" / "docs"
+DOCS_DIR = ROOT_DIR / "data" / "docs"
 
 POLICIES = {
     "employment-eligibility-verification-policy.pdf": {

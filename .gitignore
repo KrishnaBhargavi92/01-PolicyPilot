@@ -17,6 +17,7 @@ venv/
 
 # Generated RAG artifacts
 backend/extracted_text/
+data/generated/
 
 # Jupyter
 .ipynb_checkpoints/
