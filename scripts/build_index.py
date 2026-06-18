@@ -8,6 +8,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from policylens.pipeline import build_rag_artifacts
+from policylens.vectorstores.pinecone import upload_local_vectors_to_pinecone
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,12 +18,22 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rebuild even if local artifacts already exist.",
     )
+    parser.add_argument(
+        "--upload-pinecone",
+        action="store_true",
+        help="Upload the built vectors to Pinecone after building.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     build_rag_artifacts(force=args.force)
+
+    if args.upload_pinecone:
+        upserted_count = upload_local_vectors_to_pinecone()
+        print(f"Upserted {upserted_count} vectors to Pinecone.")
+
     print("RAG index is ready.")
 
 

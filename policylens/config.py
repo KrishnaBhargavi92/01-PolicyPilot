@@ -57,6 +57,11 @@ EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "local-tfidf-svd")
 TFIDF_MAX_FEATURES = int(os.getenv("TFIDF_MAX_FEATURES", "4096"))
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "128"))
 
+VECTOR_STORES = ("pinecone", "sqlite")
+DEFAULT_VECTOR_STORE = os.getenv("VECTOR_STORE", "pinecone").strip().lower()
+if DEFAULT_VECTOR_STORE not in VECTOR_STORES:
+    raise ValueError(f"VECTOR_STORE must be one of: {', '.join(VECTOR_STORES)}")
+
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_HOST = os.getenv("PINECONE_INDEX_HOST")
 PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "policy-lens")

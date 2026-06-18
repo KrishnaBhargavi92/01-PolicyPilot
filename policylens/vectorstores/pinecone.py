@@ -126,6 +126,46 @@ def upsert_vectors_to_pinecone(
     return total_upserted
 
 
+def query_pinecone(
+    vector: list[float],
+    top_k: int,
+    api_key: str | None = PINECONE_API_KEY,
+    index_host: str | None = PINECONE_INDEX_HOST,
+    namespace: str = PINECONE_NAMESPACE,
+) -> list[dict[str, Any]]:
+    if not api_key:
+        raise RuntimeError("Set PINECONE_API_KEY before querying Pinecone.")
+    if not index_host:
+        raise RuntimeError("Set PINECONE_INDEX_HOST before querying Pinecone.")
+
+    response = post_json(
+        f"{normalize_host(index_host)}/query",
+        {
+            "vector": vector,
+            "topK": top_k,
+            "includeMetadata": True,
+            "namespace": namespace,
+        },
+        api_key=api_key,
+    )
+
+    results = []
+    for match in response.get("matches", []):
+        metadata = match.get("metadata") or {}
+        results.append(
+            {
+                "score": round(float(match.get("score", 0.0)), 6),
+                "id": match["id"],
+                "source": metadata.get("source", ""),
+                "page": int(metadata.get("page", 0)),
+                "chunk_index": int(metadata.get("chunk_index", 0)),
+                "text": metadata.get("text", ""),
+            }
+        )
+
+    return results
+
+
 def upload_local_vectors_to_pinecone(
     vector_db_path: Path = VECTOR_DB_PATH,
     api_key: str | None = PINECONE_API_KEY,

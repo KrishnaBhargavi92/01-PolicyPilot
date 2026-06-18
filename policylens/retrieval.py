@@ -5,7 +5,8 @@ import sqlite3
 import joblib
 import numpy as np
 
-from .config import EMBEDDING_MODEL_PATH, VECTOR_DB_PATH
+from .config import DEFAULT_VECTOR_STORE, EMBEDDING_MODEL_PATH, VECTOR_DB_PATH, VECTOR_STORES
+from .vectorstores.pinecone import query_pinecone
 
 
 def embed_question(question: str) -> list[float]:
@@ -19,7 +20,7 @@ def embed_question(question: str) -> list[float]:
     return np.asarray(embedding, dtype=np.float32).round(8).tolist()
 
 
-def retrieve_chunks(question: str, top_k: int) -> list[dict]:
+def retrieve_chunks_from_sqlite(question: str, top_k: int) -> list[dict]:
     if not VECTOR_DB_PATH.exists():
         raise FileNotFoundError(f"Missing {VECTOR_DB_PATH}. Run scripts/build_index.py first.")
 
@@ -68,6 +69,24 @@ def retrieve_chunks(question: str, top_k: int) -> list[dict]:
     return sorted(results, key=lambda item: item["score"], reverse=True)[:top_k]
 
 
+def retrieve_chunks_from_pinecone(question: str, top_k: int) -> list[dict]:
+    query_embedding = embed_question(question)
+    return query_pinecone(query_embedding, top_k)
+
+
+def retrieve_chunks(
+    question: str,
+    top_k: int,
+    vector_store: str = DEFAULT_VECTOR_STORE,
+) -> list[dict]:
+    if vector_store == "pinecone":
+        return retrieve_chunks_from_pinecone(question, top_k)
+    if vector_store == "sqlite":
+        return retrieve_chunks_from_sqlite(question, top_k)
+
+    raise ValueError(f"Vector store must be one of: {', '.join(VECTOR_STORES)}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Embed a question or retrieve RAG chunks.")
     parser.add_argument("question", help="Question to embed or retrieve against.")
@@ -76,6 +95,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=0,
         help="Retrieve top K chunks instead of printing only the embedding.",
+    )
+    parser.add_argument(
+        "--vector-store",
+        choices=VECTOR_STORES,
+        default=DEFAULT_VECTOR_STORE,
+        help="Vector store to use for retrieval.",
     )
     return parser.parse_args()
 
@@ -89,7 +114,12 @@ def main() -> None:
                 {
                     "question": args.question,
                     "top_k": args.top_k,
-                    "results": retrieve_chunks(args.question, args.top_k),
+                    "vector_store": args.vector_store,
+                    "results": retrieve_chunks(
+                        args.question,
+                        args.top_k,
+                        vector_store=args.vector_store,
+                    ),
                 },
                 ensure_ascii=False,
             )

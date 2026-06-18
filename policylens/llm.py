@@ -10,6 +10,7 @@ import certifi
 from .config import (
     DEFAULT_PROVIDER,
     DEFAULT_TOP_K,
+    DEFAULT_VECTOR_STORE,
     OLLAMA_MODEL,
     OLLAMA_URL,
     OPENAI_API_KEY,
@@ -19,6 +20,7 @@ from .config import (
     OPENAI_MODEL,
     OPENAI_URL,
     PROVIDERS,
+    VECTOR_STORES,
 )
 from .retrieval import retrieve_chunks
 
@@ -199,6 +201,7 @@ def build_response(
     chunks: list[dict[str, Any]],
     provider: str,
     top_k: int,
+    vector_store: str,
     answer: str | None = None,
     include_chunks: bool = False,
     include_prompt: bool = False,
@@ -208,6 +211,7 @@ def build_response(
         "provider": provider,
         "model": provider_model(provider),
         "top_k": top_k,
+        "vector_store": vector_store,
         "answer": answer,
         "citations": build_citations(chunks),
     }
@@ -224,10 +228,11 @@ def answer_question(
     question: str,
     top_k: int = DEFAULT_TOP_K,
     provider: str = DEFAULT_PROVIDER,
+    vector_store: str = DEFAULT_VECTOR_STORE,
     dry_run: bool = False,
     include_chunks: bool = False,
 ) -> dict[str, Any]:
-    chunks = retrieve_chunks(question, top_k)
+    chunks = retrieve_chunks(question, top_k, vector_store=vector_store)
 
     if dry_run:
         return build_response(
@@ -235,6 +240,7 @@ def answer_question(
             chunks=chunks,
             provider=provider,
             top_k=top_k,
+            vector_store=vector_store,
             include_chunks=True,
             include_prompt=True,
         )
@@ -245,6 +251,7 @@ def answer_question(
         chunks=chunks,
         provider=provider,
         top_k=top_k,
+        vector_store=vector_store,
         answer=answer,
         include_chunks=include_chunks,
     )
@@ -255,6 +262,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("question", help="Question to answer.")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument("--provider", choices=PROVIDERS, default=DEFAULT_PROVIDER)
+    parser.add_argument("--vector-store", choices=VECTOR_STORES, default=DEFAULT_VECTOR_STORE)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -274,6 +282,7 @@ def main() -> None:
         question=args.question,
         top_k=args.top_k,
         provider=args.provider,
+        vector_store=args.vector_store,
         dry_run=args.dry_run,
         include_chunks=args.include_chunks,
     )

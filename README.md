@@ -4,7 +4,7 @@ Local PDF RAG pipeline:
 
 1. Extract PDF text into chunks.
 2. Generate local TF-IDF + SVD embeddings.
-3. Store vectors in SQLite.
+3. Store vectors in Pinecone as the primary vector database.
 4. Retrieve relevant chunks and answer with OpenAI citations.
 
 The PDFs in `data/docs/` are anonymized sample policy documents for demo use.
@@ -18,21 +18,21 @@ venv/bin/python -m pip install -r requirements.txt
 cp backend/.env.example backend/.env
 ```
 
-Edit `backend/.env` and set your own `OPENAI_API_KEY`.
+Edit `backend/.env` and set your own `OPENAI_API_KEY` plus Pinecone settings.
 
 ## Project Structure
 
 ```text
 app/                 Streamlit UI
 data/docs/           Sample source PDFs committed to git
-data/generated/      Local generated chunks, embeddings, and vector DB
+data/generated/      Local generated chunks, embeddings, and SQLite fallback DB
 policylens/          Reusable RAG package
 policylens/vectorstores/
 scripts/             Operational commands
 backend/             Backward-compatible script wrappers
 ```
 
-## Build Local RAG Artifacts
+## Build RAG Artifacts
 
 To regenerate the anonymized sample PDFs:
 
@@ -44,38 +44,57 @@ python3 scripts/generate_sample_pdfs.py
 venv/bin/python scripts/build_index.py
 ```
 
-This creates ignored local files under `data/generated/`, including:
+This creates ignored local build files under `data/generated/`, including:
 
 - `rag_chunks.jsonl`
 - `rag_embedding_model.joblib`
 - `rag_embeddings.jsonl`
-- `rag_vector_store.sqlite`
+- `rag_vector_store.sqlite` as a local fallback and Pinecone upload source
 
-## Store Vectors In Pinecone
+## Use Pinecone As The Primary Vector Store
 
 Create a Pinecone index with:
 
 - Dimension: the `embedding_dimensions` printed by `scripts/build_index.py`
 - Metric: cosine
 
-Then set Pinecone values in `backend/.env`:
+Then set Pinecone values in `backend/.env`. `VECTOR_STORE="pinecone"` is the default:
 
 ```bash
+VECTOR_STORE="pinecone"
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_HOST="your-index-host"
 PINECONE_NAMESPACE="policy-lens"
 ```
 
-Upload vectors:
+Build and upload vectors to Pinecone:
+
+```bash
+venv/bin/python scripts/build_index.py --force --upload-pinecone
+```
+
+Or upload existing local vectors:
 
 ```bash
 venv/bin/python scripts/upsert_pinecone.py
+```
+
+For offline/local testing without Pinecone, set:
+
+```bash
+VECTOR_STORE="sqlite"
 ```
 
 ## Ask A Question
 
 ```bash
 venv/bin/python -m policylens.llm "When must a new employee complete Form I-9?" --top-k 3
+```
+
+To force local SQLite fallback retrieval:
+
+```bash
+venv/bin/python -m policylens.llm "When must a new employee complete Form I-9?" --top-k 3 --vector-store sqlite
 ```
 
 Debug retrieval and prompt without calling OpenAI:
@@ -100,6 +119,10 @@ OPENAI_API_KEY = "your-openai-api-key"
 OPENAI_MODEL = "gpt-4.1-mini"
 LLM_PROVIDER = "openai"
 RAG_TOP_K = "4"
+VECTOR_STORE = "pinecone"
+PINECONE_API_KEY = "your-pinecone-api-key"
+PINECONE_INDEX_HOST = "your-index-host"
+PINECONE_NAMESPACE = "policy-lens"
 ```
 
 ## Git Safety

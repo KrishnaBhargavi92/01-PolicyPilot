@@ -16,7 +16,16 @@ def load_streamlit_secrets() -> None:
     except Exception:
         secrets = {}
 
-    for key in ("OPENAI_API_KEY", "OPENAI_MODEL", "LLM_PROVIDER", "RAG_TOP_K"):
+    for key in (
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "LLM_PROVIDER",
+        "RAG_TOP_K",
+        "VECTOR_STORE",
+        "PINECONE_API_KEY",
+        "PINECONE_INDEX_HOST",
+        "PINECONE_NAMESPACE",
+    ):
         if key in secrets and key not in os.environ:
             os.environ[key] = str(secrets[key])
 
@@ -25,6 +34,7 @@ load_streamlit_secrets()
 
 from policylens.llm import answer_question  # noqa: E402
 from policylens.pipeline import build_rag_artifacts, rag_artifacts_exist  # noqa: E402
+from policylens.config import DEFAULT_VECTOR_STORE, VECTOR_STORES  # noqa: E402
 
 
 def ensure_rag_index() -> None:
@@ -54,6 +64,11 @@ with st.sidebar:
         options=["openai", "ollama", "openai-compatible"],
         index=0,
     )
+    vector_store = st.selectbox(
+        "Vector store",
+        options=list(VECTOR_STORES),
+        index=list(VECTOR_STORES).index(DEFAULT_VECTOR_STORE),
+    )
 
 question = st.text_area(
     "Question",
@@ -71,6 +86,7 @@ if ask:
                 question=question.strip(),
                 top_k=top_k,
                 provider=provider,
+                vector_store=vector_store,
                 dry_run=dry_run,
                 include_chunks=include_chunks,
             )
