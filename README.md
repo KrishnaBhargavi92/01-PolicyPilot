@@ -3,7 +3,7 @@
 Local PDF RAG pipeline:
 
 1. Extract PDF text into chunks.
-2. Generate local TF-IDF + SVD embeddings.
+2. Generate dense embeddings with a real open-source embedding model.
 3. Store vectors in Pinecone as the primary vector database.
 4. Retrieve relevant chunks and answer with OpenAI citations.
 
@@ -47,7 +47,7 @@ venv/bin/python scripts/build_index.py
 This creates ignored local build files under `data/generated/`, including:
 
 - `rag_chunks.jsonl`
-- `rag_embedding_model.joblib`
+- `rag_embedding_model.json`
 - `rag_embeddings.jsonl`
 - `rag_vector_store.sqlite` as a local fallback and Pinecone upload source
 
@@ -55,12 +55,14 @@ This creates ignored local build files under `data/generated/`, including:
 
 Create a Pinecone index with:
 
-- Dimension: the `embedding_dimensions` printed by `scripts/build_index.py`
+- Dimension: `384` for the default `BAAI/bge-small-en-v1.5` model, or the
+  `embedding_dimensions` printed by `scripts/build_index.py` if you change models
 - Metric: cosine
 
 Then set Pinecone values in `backend/.env`. `VECTOR_STORE="pinecone"` is the default:
 
 ```bash
+EMBEDDING_MODEL="BAAI/bge-small-en-v1.5"
 VECTOR_STORE="pinecone"
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_HOST="your-index-host"
@@ -72,6 +74,8 @@ Build and upload vectors to Pinecone:
 ```bash
 venv/bin/python scripts/build_index.py --force --upload-pinecone
 ```
+
+The first build downloads the configured `sentence-transformers` model.
 
 Or upload existing local vectors:
 
@@ -119,6 +123,7 @@ OPENAI_API_KEY = "your-openai-api-key"
 OPENAI_MODEL = "gpt-4.1-mini"
 LLM_PROVIDER = "openai"
 RAG_TOP_K = "4"
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 VECTOR_STORE = "pinecone"
 PINECONE_API_KEY = "your-pinecone-api-key"
 PINECONE_INDEX_HOST = "your-index-host"

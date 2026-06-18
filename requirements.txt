@@ -1,6 +1,5 @@
 certifi
-joblib
 numpy
 pypdf
-scikit-learn
+sentence-transformers
 streamlit

@@ -9,7 +9,7 @@ GENERATED_DIR = DATA_DIR / "generated"
 
 CHUNKS_PATH = GENERATED_DIR / "rag_chunks.jsonl"
 EMBEDDINGS_PATH = GENERATED_DIR / "rag_embeddings.jsonl"
-EMBEDDING_MODEL_PATH = GENERATED_DIR / "rag_embedding_model.joblib"
+EMBEDDING_MODEL_PATH = GENERATED_DIR / "rag_embedding_model.json"
 VECTOR_DB_PATH = GENERATED_DIR / "rag_vector_store.sqlite"
 
 ENV_PATHS = (
@@ -53,9 +53,8 @@ OPENAI_COMPATIBLE_URL = os.getenv(
 OPENAI_COMPATIBLE_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 OPENAI_COMPATIBLE_API_KEY = os.getenv("LLM_API_KEY")
 
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "local-tfidf-svd")
-TFIDF_MAX_FEATURES = int(os.getenv("TFIDF_MAX_FEATURES", "4096"))
-EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "128"))
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
 
 VECTOR_STORES = ("pinecone", "sqlite")
 DEFAULT_VECTOR_STORE = os.getenv("VECTOR_STORE", "pinecone").strip().lower()

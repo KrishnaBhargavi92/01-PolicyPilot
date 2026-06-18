@@ -2,10 +2,10 @@ import argparse
 import json
 import sqlite3
 
-import joblib
 import numpy as np
 
 from .config import DEFAULT_VECTOR_STORE, EMBEDDING_MODEL_PATH, VECTOR_DB_PATH, VECTOR_STORES
+from .embeddings import encode_texts
 from .vectorstores.pinecone import query_pinecone
 
 
@@ -15,8 +15,7 @@ def embed_question(question: str) -> list[float]:
             f"Missing {EMBEDDING_MODEL_PATH}. Run scripts/build_index.py first."
         )
 
-    model = joblib.load(EMBEDDING_MODEL_PATH)
-    embedding = model.transform([question])[0]
+    embedding = encode_texts([question])[0]
     return np.asarray(embedding, dtype=np.float32).round(8).tolist()
 
 

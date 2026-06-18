@@ -21,6 +21,8 @@ def load_streamlit_secrets() -> None:
         "OPENAI_MODEL",
         "LLM_PROVIDER",
         "RAG_TOP_K",
+        "EMBEDDING_MODEL",
+        "EMBEDDING_BATCH_SIZE",
         "VECTOR_STORE",
         "PINECONE_API_KEY",
         "PINECONE_INDEX_HOST",

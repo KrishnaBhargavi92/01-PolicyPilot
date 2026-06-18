@@ -3,20 +3,14 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
-from sklearn.decomposition import TruncatedSVD
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import Normalizer
 
 from .config import (
     CHUNKS_PATH,
-    EMBEDDING_DIMENSIONS,
+    EMBEDDING_BATCH_SIZE,
     EMBEDDING_MODEL_NAME,
     EMBEDDING_MODEL_PATH,
     EMBEDDINGS_PATH,
-    TFIDF_MAX_FEATURES,
     VECTOR_DB_PATH,
 )
 
@@ -122,36 +116,56 @@ def save_vector_db(
         connection.close()
 
 
+def load_embedding_model():
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as error:
+        raise RuntimeError(
+            "Install sentence-transformers before generating embeddings: "
+            "pip install -r requirements.txt"
+        ) from error
+
+    return SentenceTransformer(EMBEDDING_MODEL_NAME)
+
+
+def encode_texts(texts: list[str]) -> np.ndarray:
+    model = load_embedding_model()
+    embeddings = model.encode(
+        texts,
+        batch_size=EMBEDDING_BATCH_SIZE,
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+        show_progress_bar=True,
+    )
+    return np.asarray(embeddings, dtype=np.float32)
+
+
+def save_embedding_metadata(dimensions: int) -> None:
+    EMBEDDING_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    EMBEDDING_MODEL_PATH.write_text(
+        json.dumps(
+            {
+                "embedding_model": EMBEDDING_MODEL_NAME,
+                "embedding_provider": "sentence-transformers",
+                "embedding_dimensions": dimensions,
+                "normalized": True,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 def generate_embeddings() -> int:
     chunks = load_chunks()
     if not chunks:
         raise ValueError(f"No chunks found in {CHUNKS_PATH}")
 
     texts = [chunk["text"] for chunk in chunks]
-    vectorizer = TfidfVectorizer(
-        lowercase=True,
-        stop_words="english",
-        ngram_range=(1, 2),
-        max_features=TFIDF_MAX_FEATURES,
-    )
-    tfidf = vectorizer.fit_transform(texts)
-    dimensions = min(EMBEDDING_DIMENSIONS, tfidf.shape[0] - 1, tfidf.shape[1] - 1)
-
-    if dimensions < 1:
-        raise ValueError("Not enough text to create embeddings")
-
-    print(f"Generating {dimensions}-dimensional local embeddings with TF-IDF + SVD")
-    model = Pipeline(
-        [
-            ("tfidf", vectorizer),
-            ("svd", TruncatedSVD(n_components=dimensions, random_state=42)),
-            ("normalize", Normalizer(copy=False)),
-        ]
-    )
-    embeddings = model.fit_transform(texts)
-
-    EMBEDDING_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, EMBEDDING_MODEL_PATH)
+    print(f"Generating embeddings with sentence-transformers model: {EMBEDDING_MODEL_NAME}")
+    embeddings = encode_texts(texts)
+    dimensions = int(embeddings.shape[1])
+    save_embedding_metadata(dimensions)
 
     with EMBEDDINGS_PATH.open("w", encoding="utf-8") as output_file:
         for chunk, embedding in zip(chunks, embeddings):
@@ -166,7 +180,7 @@ def generate_embeddings() -> int:
     save_vector_db(chunks, embeddings, dimensions)
 
     print(f"Created {EMBEDDINGS_PATH} with {len(chunks)} embeddings")
-    print(f"Saved fitted embedding model to {EMBEDDING_MODEL_PATH}")
+    print(f"Saved embedding metadata to {EMBEDDING_MODEL_PATH}")
     print(f"Saved local vector database to {VECTOR_DB_PATH}")
     return len(chunks)
 
